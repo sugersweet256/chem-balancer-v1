@@ -1,3 +1,5 @@
+# 化学方程式配平器
+import re
 from collections import defaultdict
 
 
@@ -64,10 +66,22 @@ def parser_info(data: str) -> dict:
 
             i += 1
 
+        elif ch == '^':
+            charge_ = data[i+1: len(data)]
+            num = re.findall(r'\d*', charge_)[0]
+            if num == '':
+                num = 1
+            num = (int(num)*-1 if '-' in charge_ else int(num))
+            element_list[-1]['charge'] += num
+            break
 
         else:
             # 其它字符（孤立的小写字母、数字等）跳过
             i += 1
+
+
+
+
     # 到最后把水合物的部分弹栈再加回第一级栈
     if len(element_list) > 1:
         water_part = element_list.pop()
@@ -77,6 +91,36 @@ def parser_info(data: str) -> dict:
     return dict(element_list[0])
 
 
+# 将元素从化学方程式里面解析出来
+def parse_equation(eq_str: str):
+    eq_str = eq_str.strip()
+    # 先把离子里的电荷 + 临时替换掉（只保护 ^ 后面的符号，不碰物质分隔符）
+
+    protected = re.sub(r'\^(\d*)\+', r'^\1plus', eq_str)
+    protected = re.sub(r'\^(\d*)-', r'^\1minus', protected)
+
+    left, right = protected.split("->")
+    reactants = [x.strip() for x in left.split("+")]
+    products = [x.strip() for x in right.split("+")]
+
+    # 还原
+    reactant_strs = [r.replace("plus", "+").replace("minus", "-") for r in reactants]
+    product_strs = [p.replace("plus", "+").replace("minus", "-") for p in products]
+
+    reactant = []
+    for substance in reactant_strs:
+        element_dict = parser_info(substance)
+        reactant.append(element_dict)
+    product = []
+    for substance in product_strs:
+        element_dict = parser_info(substance)
+        product.append(element_dict)
+
+    return reactant, product
+
+
+
+
 if __name__ == "__main__":
-    element_dict = parser_info('CuSO4·5H2O')
-    print(element_dict)
+    element_dict, a = parse_equation('MnO^4- + Fe^2+ + H^+ -> Mn^2+ + Fe^3+ + H2O')
+    print(element_dict, a)
