@@ -91,21 +91,37 @@ def parser_info(data: str) -> dict:
     return dict(element_list[0])
 
 
+# 把不带 ^ 的电荷写法规范成 ^ 写法（Fe2+ -> Fe^2+，SO4- -> SO4^-，H+ -> H^+）
+def normalize_charge(substance: str) -> str:
+    if '^' in substance:
+        return substance
+    # 简单离子：单元素 + 电荷数字（Fe2+ / Cu2+ / Al3+）
+    m = re.match(r'^([A-Z][a-z]?)(\d+)([+-])$', substance)
+    if m:
+        return f'{m.group(1)}^{m.group(2)}{m.group(3)}'
+    # 其余：多原子离子，末尾数字是下标（SO4- / NH4+ / H2PO4-）
+    m = re.match(r'^(.+?)([+-])$', substance)
+    if m:
+        return f'{m.group(1)}^{m.group(2)}'
+    return substance
+
+
 # 将元素从化学方程式里面解析出来
 def parse_equation(eq_str: str):
     eq_str = eq_str.strip()
-    # 先把离子里的电荷 + 临时替换掉（只保护 ^ 后面的符号，不碰物质分隔符）
-
+    # 把离子电荷（带 ^ 和不带 ^ 两种写法）临时替换掉，避免与物质分隔符 + 混淆
     protected = re.sub(r'\^(\d*)\+', r'^\1plus', eq_str)
     protected = re.sub(r'\^(\d*)-', r'^\1minus', protected)
+    protected = re.sub(r'(?<=[A-Za-z0-9\)])\+(?=\s|$)', 'plus', protected)
+    protected = re.sub(r'(?<=[A-Za-z0-9\)])-(?=\s|$)', 'minus', protected)
 
     left, right = protected.split("->")
     reactants = [x.strip() for x in left.split("+")]
     products = [x.strip() for x in right.split("+")]
 
-    # 还原
-    reactant_strs = [r.replace("plus", "+").replace("minus", "-") for r in reactants]
-    product_strs = [p.replace("plus", "+").replace("minus", "-") for p in products]
+    # 还原，并规范成 ^ 写法
+    reactant_strs = [normalize_charge(r.replace("plus", "+").replace("minus", "-")) for r in reactants]
+    product_strs = [normalize_charge(p.replace("plus", "+").replace("minus", "-")) for p in products]
 
     reactant = []
     for substance in reactant_strs:
@@ -116,11 +132,11 @@ def parse_equation(eq_str: str):
         element_dict = parser_info(substance)
         product.append(element_dict)
 
-    return reactant, product
+    return reactant, product, (reactant_strs, product_strs)
 
 
 
 
 if __name__ == "__main__":
-    element_dict, a = parse_equation('MnO^4- + Fe^2+ + H^+ -> Mn^2+ + Fe^3+ + H2O')
-    print(element_dict, a)
+    element_dict, a, b = parse_equation('MnO^4- + Fe^2+ + H^+ -> Mn^2+ + Fe^3+ + H2O')
+    print(element_dict, a, b)

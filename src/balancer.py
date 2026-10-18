@@ -37,7 +37,7 @@ def found_ele(reactants:list, products:list) -> dict:
     return result
 
 # 正式配平函数
-def balancer(reactants:list, products:list)->list:
+def balancer(reactants:list, products:list, substance_list):
     # 拿到所有元素出现的矩阵
     parse_dict = found_ele(reactants, products)
 
@@ -70,7 +70,7 @@ def balancer(reactants:list, products:list)->list:
         # 方程里面存在负数，说明无解
         if any(c <= 0 for c in int_vec):
             raise ValueError('该方程式无法配平（不存在全为正的系数解）')
-        return int_vec
+        return result_print(int_vec, substance_list[0], substance_list[1])
     # 多个基向量说明有多组解，交给用户决定要不要取最简整数解
     else:
         a = input('该方程有多组解，是否选择最简的整数解，否则请重新修改方程式(y/n):')
@@ -92,7 +92,9 @@ def balancer(reactants:list, products:list)->list:
             raise ValueError('没有找到系数全为正的整数解')
 
         int_vec = compare_sum(balance_result)[0][2]
-        return int_vec
+
+        equation = result_print(int_vec, substance_list[0], substance_list[1])
+        return equation
 
 
 def simplify(result: Matrix):
@@ -118,8 +120,31 @@ def simplify(result: Matrix):
     g = reduce(gcd, int_vec)
     if g > 1:
         int_vec = [c // g for c in int_vec]
+
+
    #返回配平系数列表
     return int_vec
+
+
+def result_print(num_list:list, reactants:list, products:list):
+    substance_l = reactants + products
+
+
+    i = 0
+    new_substance_list = []
+
+    for substances in substance_l:
+        if num_list[i] > 1:
+            new_substance_list.append(str(num_list[i])+substances)
+        else:
+            new_substance_list.append(substances)
+        i+=1
+    new_reactants_l:list = new_substance_list[:len(substance_l)-len(products)]
+    new_products_l:list = new_substance_list[len(substance_l)-len(products):]
+    equation_str = '+'.join(new_reactants_l) + '->' + '+'.join(new_products_l)
+    return equation_str
+
+
 
 
 
