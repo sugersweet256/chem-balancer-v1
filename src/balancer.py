@@ -6,7 +6,14 @@
 from sympy import Matrix, lcm
 from math import gcd
 from functools import reduce
-from itertools import product
+
+
+# 常见元素的化合价（没列出来的元素就用“剩余法”现算）
+VALENCE = {'H': 1, 'F': -1, 'O': -2, 'Cl': -1, 'Br': -1, 'I': -1,
+           'K': 1, 'Na': 1, 'Ag': 1, 'Mg': 2, 'Ca': 2, 'Ba': 2, 'Zn': 2, 'Al': 3, 'S': 6}
+
+# 电负性从大到小
+ELECTRONEG = ['F', 'O', 'Cl', 'Br', 'I', 'N', 'S', 'C', 'P', 'H']
 
 
 
@@ -35,6 +42,71 @@ def found_ele(reactants:list, products:list) -> dict:
         result[element] = [0]*count
 
     return result
+
+
+def oxidation_num(species:dict):
+    """算一个物质里每个元素的化合价，算不准就返回 None"""
+    charge = species.get('charge', 0)
+    os = {}
+    rest = charge
+    other = []
+    for el, n in species.items():
+        if el == 'charge':
+            continue
+        if el in VALENCE:
+            os[el] = VALENCE[el]
+            rest -= VALENCE[el] * n
+        else:
+            other.append(el)
+    # 两个以上查不到表的元素，靠剩余法分不清，算不准
+    if len(other) > 1:
+        return None
+    # 查不到表的元素，用剩下的电荷平分
+    for el in other:
+        os[el] = rest // species[el]
+        rest -= os[el] * species[el]
+        if os[el] < 0:      # 金属/非金属里冒负数，多半是表值套错了
+            return None
+    # 表里的化合价加起来对不上电荷时（比如过氧化氢里的氧），挨个换着试
+    if rest != 0:
+        cand = sorted(os, key=lambda e: (species[e], ELECTRONEG.index(e) if e in ELECTRONEG else 99))
+        for el in cand:
+            v = (charge - (sum(os[k]*species[k] for k in os) - os[el]*species[el])) // species[el]
+            if v == 0 and len(species) > 1:     # 化合物里的元素显 0 价基本不对
+                continue
+            os[el] = v
+            return os
+        return None
+    return os
+
+
+def valence_balance(reactants:list, products:list, parse_list:list):
+    """多解时用化合价升降守恒补一条电子守恒约束，能解出唯一正系数就返回"""
+    left_os = [oxidation_num(s) for s in reactants]
+    right_os = [oxidation_num(s) for s in products]
+    if None in left_os or None in right_os:     # 有物质化合价算不准，就不硬算
+        return None
+
+    # 生成物里的原子，当作从左边“化合价最接近”的那个物质来的
+    row = [0] * len(reactants)
+    for i, species in enumerate(products):
+        c = 0
+        for el, n in species.items():
+            if el == 'charge':
+                continue
+            q = right_os[i][el]
+            source = [os[el] for os in left_os if el in os]
+            if source:
+                c += n * (q - min(source, key=lambda p: abs(p - q)))
+        row.append(c)
+
+    result = Matrix(parse_list + [row]).nullspace()
+    if len(result) == 1:
+        int_vec = simplify(result[0])
+        if all(x > 0 for x in int_vec):
+            return int_vec
+    return None
+
 
 # 正式配平函数
 def balancer(reactants:list, products:list, substance_list):
@@ -71,30 +143,12 @@ def balancer(reactants:list, products:list, substance_list):
         if any(c <= 0 for c in int_vec):
             raise ValueError('该方程式无法配平（不存在全为正的系数解）')
         return result_print(int_vec, substance_list[0], substance_list[1])
-    # 多个基向量说明有多组解，交给用户决定要不要取最简整数解
+    # 多个基向量说明有多组解，用化合价守恒试试，定不下来就报警，不返回不确定的结果
     else:
-        a = input('该方程有多组解，是否选择最简的整数解，否则请重新修改方程式(y/n):')
-        if a != 'y':
-            raise ValueError('该方程式有多组解，请补充条件后重试')
-
-        # 基向量自身不是配平结果（含负数或0），要用它们的整数组合拼出全为正的解
-        limit = 20 if len(result) == 2 else 5
-        for coef in product(range(-limit, limit + 1), repeat=len(result)):
-            if not any(coef):
-                continue
-            vec = sum((c * v for c, v in zip(coef, result)),
-                      Matrix.zeros(result[0].rows, 1))
-            int_vec = simplify(vec)
-            if all(c > 0 for c in int_vec):
-                balance_result.append(int_vec)
-
-        if not balance_result:
-            raise ValueError('没有找到系数全为正的整数解')
-
-        int_vec = compare_sum(balance_result)[0][2]
-
-        equation = result_print(int_vec, substance_list[0], substance_list[1])
-        return equation
+        int_vec = valence_balance(reactants, products, parse_list)
+        if int_vec is not None:
+            return result_print(int_vec, substance_list[0], substance_list[1])
+        raise ValueError('该方程式有多组配平解，化合价无法唯一确定，无法保证结果正确，请检查方程式或补充条件')
 
 
 def simplify(result: Matrix):
@@ -141,7 +195,7 @@ def result_print(num_list:list, reactants:list, products:list):
         i+=1
     new_reactants_l:list = new_substance_list[:len(substance_l)-len(products)]
     new_products_l:list = new_substance_list[len(substance_l)-len(products):]
-    equation_str = '+'.join(new_reactants_l) + '->' + '+'.join(new_products_l)
+    equation_str =  ' + '.join(new_reactants_l) + '->' + ' + '.join(new_products_l)
     return equation_str
 
 

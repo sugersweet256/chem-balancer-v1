@@ -139,4 +139,4 @@ def parse_equation(eq_str: str):
 
 if __name__ == "__main__":
     element_dict, a, b = parse_equation('MnO^4- + Fe^2+ + H^+ -> Mn^2+ + Fe^3+ + H2O')
-    print(element_dict, a, b)
+    print(f'{element_dict}\n{a}\n{b}')
