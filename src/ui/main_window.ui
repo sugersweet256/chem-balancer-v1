@@ -301,79 +301,7 @@
                </property>
               </widget>
              </item>
-             <item>
-              <layout class="QHBoxLayout" name="heroTagsLayout">
-               <property name="spacing">
-                <number>7</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="tagScience">
-                 <property name="text">
-                  <string>科学与研究</string>
-                 </property>
-                 <property name="tag" stdset="0">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLabel" name="tagEducation">
-                 <property name="text">
-                  <string>教育工具</string>
-                 </property>
-                 <property name="tag" stdset="0">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLabel" name="tagMath">
-                 <property name="text">
-                  <string>线性代数</string>
-                 </property>
-                 <property name="tag" stdset="0">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="heroTagsSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </item>
             </layout>
-           </item>
-           <item>
-            <widget class="QPushButton" name="favoriteButton">
-             <property name="minimumSize">
-              <size>
-               <width>96</width>
-               <height>38</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>96</width>
-               <height>38</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>☆  收藏</string>
-             </property>
-             <property name="ghost" stdset="0">
-              <bool>true</bool>
-             </property>
-            </widget>
            </item>
           </layout>
          </widget>
@@ -489,11 +417,23 @@
                     </spacer>
                    </item>
                    <item>
-                    <widget class="QPushButton" name="clearButton">
+                    <widget class="QPushButton" name="balanceButton">
                      <property name="text">
-                      <string>清空</string>
+                      <string>配平</string>
                      </property>
-                     <property name="ghostSmall" stdset="0">
+                     <property name="minimumSize">
+                      <size>
+                       <width>76</width>
+                       <height>30</height>
+                      </size>
+                     </property>
+                     <property name="maximumSize">
+                      <size>
+                       <width>90</width>
+                       <height>30</height>
+                      </size>
+                     </property>
+                     <property name="primary" stdset="0">
                       <bool>true</bool>
                      </property>
                     </widget>

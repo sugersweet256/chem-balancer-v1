@@ -73,7 +73,6 @@ class MainWindow(QMainWindow):
         self._result: BalanceResult | None = None
         self._toast_animation: QPropertyAnimation | None = None
         self._toast_effect: QGraphicsOpacityEffect | None = None
-        self._favorite = False
         self._periodic_window = None
 
         self._load_designer_ui()
@@ -82,8 +81,8 @@ class MainWindow(QMainWindow):
         self._configure_widgets()
         self._connect_signals()
 
+        # 首屏预填一个示例，但不在启动时自动计算；用户点击“配平”后再出结果。
         self.input.setText(EXAMPLES[0])
-        self._run_balance()
 
     # ------------------------------------------------------------------ UI
     def _load_designer_ui(self) -> None:
@@ -111,9 +110,8 @@ class MainWindow(QMainWindow):
             return found
 
         self.input = widget("equationInput", QLineEdit)
-        self.clear_button = widget("clearButton", QPushButton)
+        self.balance_button = widget("balanceButton", QPushButton)
         self.copy_button = widget("copyButton", QPushButton)
-        self.favorite_button = widget("favoriteButton", QPushButton)
         self.equation_label = widget("equationLabel", QLabel)
         self.status_pill = widget("statusPill", QLabel)
         self.result_meta = widget("resultMeta", QLabel)
@@ -149,7 +147,6 @@ class MainWindow(QMainWindow):
         self.status_pill.setProperty("state", "idle")
         self.result_meta.setProperty("state", "idle")
         self.copy_button.setEnabled(False)
-        self.favorite_button.setProperty("active", False)
         self.coefficient_row.setVisible(False)
         self.conservation_stack.setCurrentIndex(0)
         self.conservation_stack.setFixedHeight(120)
@@ -157,6 +154,7 @@ class MainWindow(QMainWindow):
 
         self.input.setAccessibleName("化学方程式输入框")
         self.input.setClearButtonEnabled(False)
+        self.balance_button.setCursor(Qt.PointingHandCursor)
 
         page = self.findChild(QWidget, "page")
         if page is not None and page.layout() is not None:
@@ -193,11 +191,6 @@ class MainWindow(QMainWindow):
 
         self._shortcut_clear = QShortcut(QKeySequence("Ctrl+L"), self)
         self._shortcut_clear.activated.connect(self._clear)
-
-        self._debounce = QTimer(self)
-        self._debounce.setSingleShot(True)
-        self._debounce.setInterval(320)
-        self._debounce.timeout.connect(self._run_balance)
 
         self._toast = QLabel(self)
         self._toast.setObjectName("toast")
@@ -242,11 +235,10 @@ class MainWindow(QMainWindow):
         widget.setGraphicsEffect(effect)
 
     def _connect_signals(self) -> None:
-        self.input.textChanged.connect(self._on_text_changed)
+        self.input.textChanged.connect(self._mark_pending)
         self.input.returnPressed.connect(self._run_balance)
-        self.clear_button.clicked.connect(self._clear)
+        self.balance_button.clicked.connect(self._run_balance)
         self.copy_button.clicked.connect(self._copy_result)
-        self.favorite_button.clicked.connect(self._toggle_favorite)
 
         for index in range(1, 9):
             button = self.findChild(QPushButton, f"exampleButton{index}")
@@ -270,13 +262,27 @@ class MainWindow(QMainWindow):
             nav_periodic.clicked.connect(self._open_periodic_table)
 
     # -------------------------------------------------------------- states
-    def _on_text_changed(self, _text: str) -> None:
-        self._debounce.start()
+    def _mark_pending(self, _text: str) -> None:
+        """输入变化时只标记“待配平”，不自动计算。"""
+        self._result = None
+        self.equation_label.setText(
+            render.placeholder_equation_html("输入完成后点击「配平」")
+        )
+        self.coefficient_row.setVisible(False)
+        self.copy_button.setEnabled(False)
+        self._set_status("待配平", "idle")
+        self._set_meta("输入完成后点击「配平」", "idle")
+        self._clear_table()
+        self.conservation_stack.setCurrentIndex(0)
+        self.conservation_stack.setFixedHeight(120)
+        self.conservation_hint.setText("等待配平")
+        self.steps_browser.setHtml(render.steps_placeholder_html())
+        self._clear_chips()
+        self._schedule_page_sync()
 
     def _use_example(self, index: int) -> None:
         self.input.setText(EXAMPLES[index])
         self.input.setFocus()
-        self._run_balance()
 
     def _clear(self) -> None:
         self.input.clear()
@@ -462,13 +468,6 @@ class MainWindow(QMainWindow):
         self._copy_timer.start(1500)
         self._show_toast("配平结果已复制到剪贴板")
 
-    def _toggle_favorite(self) -> None:
-        self._favorite = not self._favorite
-        self.favorite_button.setText("★  已收藏" if self._favorite else "☆  收藏")
-        self.favorite_button.setProperty("active", self._favorite)
-        self._set_dynamic_state(self.favorite_button, "idle")
-        self._show_toast("已收藏这个工具" if self._favorite else "已取消收藏")
-
     def _open_periodic_table(self) -> None:
         if self._periodic_window is None:
             from .periodic_window import PeriodicTableWindow
@@ -552,7 +551,6 @@ class MainWindow(QMainWindow):
             self._schedule_page_sync()
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt API
-        self._debounce.stop()
         self._toast_timer.stop()
         self._copy_timer.stop()
         if self._periodic_window is not None:
