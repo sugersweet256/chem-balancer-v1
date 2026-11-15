@@ -32,15 +32,18 @@ from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
     QGraphicsOpacityEffect,
     QHeaderView,
+    QHBoxLayout,
     QLabel,
     QLayout,
     QLineEdit,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QTextBrowser,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -123,6 +126,7 @@ class MainWindow(QMainWindow):
         self.conservation_hint = widget("conservationHint", QLabel)
         self.steps_browser = widget("stepsBrowser", QTextBrowser)
         self.page = widget("page", QWidget)
+        self.page_scroll = widget("pageScroll", QScrollArea)
         self.body = widget("body", QWidget)
         self.left_column = widget("leftColumn", QWidget)
         self.center_column = widget("centerColumn", QWidget)
@@ -214,6 +218,9 @@ class MainWindow(QMainWindow):
         self._page_sync_timer.setInterval(0)
         self._page_sync_timer.timeout.connect(self._sync_page_height)
 
+        # 摩尔质量作为一个“分区”嵌进主界面，而不是另开窗口
+        self._build_molar_section()
+
     def _set_icon(self, label_name: str, icon_name: str, size: int) -> None:
         label = self.findChild(QLabel, label_name)
         if label is None:
@@ -247,14 +254,14 @@ class MainWindow(QMainWindow):
                     lambda checked=False, i=index - 1: self._use_example(i)
                 )
 
-        for name in ("navMolar",):
-            button = self.findChild(QPushButton, name)
-            if button is not None:
-                button.clicked.connect(
-                    lambda checked=False, b=button: self._show_toast(
-                        f"「{b.text()}」将在后续版本加入"
-                    )
-                )
+        nav_balance = self.findChild(QPushButton, "navBalance")
+        if nav_balance is not None:
+            nav_balance.clicked.connect(self._show_balance_section)
+
+        nav_molar = self.findChild(QPushButton, "navMolar")
+        if nav_molar is not None:
+            nav_molar.setCursor(Qt.PointingHandCursor)
+            nav_molar.clicked.connect(self._show_molar_section)
 
         nav_periodic = self.findChild(QPushButton, "navPeriodic")
         if nav_periodic is not None:
@@ -476,6 +483,135 @@ class MainWindow(QMainWindow):
         self._periodic_window.show()
         self._periodic_window.raise_()
         self._periodic_window.activateWindow()
+
+    # --------------------------------------------------------- molar section
+    def _build_molar_section(self) -> None:
+        """把摩尔质量做成主界面里的一个分区，用堆栈和配平页来回切换。"""
+        molar = QWidget()
+        molar.setObjectName("molarPage")
+        molar.setStyleSheet("QWidget#molarPage { background: #F4F7FB; }")
+        molar_layout = QVBoxLayout(molar)
+        molar_layout.setContentsMargins(40, 12, 40, 16)
+        molar_layout.setSpacing(0)
+
+        crumb = QLabel("首页　/　工具　/　科学与研究　/　摩尔质量", molar)
+        crumb.setObjectName("breadcrumb")
+        molar_layout.addWidget(crumb)
+        molar_layout.addSpacing(16)
+
+        hero = QFrame(molar)
+        hero.setObjectName("hero")
+        hero_layout = QHBoxLayout(hero)
+        hero_layout.setContentsMargins(0, 0, 0, 0)
+        hero_layout.setSpacing(16)
+
+        icon = QLabel(hero)
+        icon.setObjectName("heroIcon")
+        icon.setFixedSize(64, 64)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setText("M")
+        pixmap = QPixmap(str(ASSETS / "molar.svg"))
+        if not pixmap.isNull():
+            icon.setText("")
+            icon.setPixmap(
+                pixmap.scaled(42, 42, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            )
+        hero_layout.addWidget(icon)
+
+        title_box = QVBoxLayout()
+        title_box.setSpacing(4)
+        title = QLabel("摩尔质量", hero)
+        title.setObjectName("heroTitle")
+        subtitle = QLabel(
+            "输入化学式即时计算摩尔质量。支持括号、多原子离子和结晶水。", hero
+        )
+        subtitle.setObjectName("heroSubtitle")
+        subtitle.setWordWrap(True)
+        title_box.addWidget(title)
+        title_box.addWidget(subtitle)
+        hero_layout.addLayout(title_box)
+        molar_layout.addWidget(hero)
+        molar_layout.addSpacing(18)
+
+        card = QFrame(molar)
+        card.setProperty("card", True)
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(24, 20, 24, 20)
+        card_layout.setSpacing(0)
+
+        card_title = QLabel("计算摩尔质量", card)
+        card_title.setObjectName("inputTitle")
+        card_layout.addWidget(card_title)
+
+        card_help = QLabel("例如 H2SO4、CuSO4·5H2O、MnO4^-、Fe^3+", card)
+        card_help.setObjectName("inputHelp")
+        card_help.setWordWrap(True)
+        card_layout.addWidget(card_help)
+        card_layout.addSpacing(14)
+
+        self.molar_input = QLineEdit(card)
+        self.molar_input.setObjectName("equationInput")
+        self.molar_input.setPlaceholderText("输入化学式，例如 H2SO4")
+        self.molar_input.returnPressed.connect(self._compute_molar_mass)
+        card_layout.addWidget(self.molar_input)
+        card_layout.addSpacing(12)
+
+        compute_button = QPushButton("计算", card)
+        compute_button.setProperty("primary", True)
+        compute_button.setCursor(Qt.PointingHandCursor)
+        compute_button.clicked.connect(self._compute_molar_mass)
+        card_layout.addWidget(compute_button)
+        card_layout.addSpacing(18)
+
+        self.molar_result = QLabel("输入化学式后点「计算」", card)
+        self.molar_result.setAlignment(Qt.AlignCenter)
+        self.molar_result.setWordWrap(True)
+        self.molar_result.setStyleSheet(
+            "color:#0F766E; font-size:26px; font-weight:700;"
+        )
+        card_layout.addWidget(self.molar_result)
+        card_layout.addStretch(1)
+        molar_layout.addWidget(card)
+        molar_layout.addStretch(1)
+
+        # 把原来的配平页和新分区一起放进堆栈，替换滚动区的内容
+        self.page_stack = QStackedWidget()
+        self.page_scroll.takeWidget()
+        self.page_stack.addWidget(self.page)   # 0：配平器
+        self.page_stack.addWidget(molar)       # 1：摩尔质量
+        self.page_scroll.setWidget(self.page_stack)
+
+    def _compute_molar_mass(self) -> None:
+        formula = self.molar_input.text().strip()
+        if not formula:
+            self.molar_result.setText("请输入化学式")
+            return
+        try:
+            from ..moer_quality import molar_mass
+
+            self.molar_result.setText(f"{molar_mass(formula):.3f} g/mol")
+        except Exception as error:  # noqa: BLE001 - 直接展示给用户
+            self.molar_result.setText(f"无法计算：{error}")
+
+    def _show_balance_section(self) -> None:
+        self.page_stack.setCurrentIndex(0)
+        self._set_active_nav("navBalance")
+
+    def _show_molar_section(self) -> None:
+        self.page_stack.setCurrentIndex(1)
+        self._set_active_nav("navMolar")
+
+    def _set_active_nav(self, active_name: str) -> None:
+        for name in ("navBalance", "navMolar"):
+            button = self.findChild(QPushButton, name)
+            if button is None:
+                continue
+            button.setProperty("nav", True)   # 保证两个按钮都有基础导航样式
+            button.setProperty("activeNav", name == active_name)
+            style = button.style()
+            style.unpolish(button)
+            style.polish(button)
+            button.update()
 
     # --------------------------------------------------------------- toast
     def _show_toast(self, message: str) -> None:
