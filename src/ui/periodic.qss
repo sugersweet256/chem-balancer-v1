@@ -1,0 +1,257 @@
+/* 元素周期表窗口 */
+
+QWidget#periodicRoot,
+QWidget#periodicPage,
+QWidget#elementGrid,
+QWidget#legend {
+    background: #F4F7FB;
+}
+
+QWidget#elementGrid,
+QWidget#legend {
+    background: transparent;
+}
+
+QScrollArea#periodicScroll,
+QScrollArea#elementScroll {
+    border: none;
+    background: transparent;
+}
+
+QScrollArea#periodicScroll > QWidget > QWidget,
+QScrollArea#elementScroll > QWidget > QWidget {
+    background: transparent;
+}
+
+QPushButton#backButton {
+    padding: 7px 13px;
+    border: 1px solid #DEE7EF;
+    border-radius: 9px;
+    background: #FFFFFF;
+    color: #526477;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+QPushButton#backButton:hover {
+    border-color: #A9DCD2;
+    background: #F2FBF8;
+    color: #0F766E;
+}
+
+QLineEdit#elementSearch {
+    padding: 5px 13px;
+    border: 1px solid #DCE5EE;
+    border-radius: 10px;
+    background: #F8FAFC;
+    color: #183146;
+    font-size: 11px;
+    selection-background-color: #BFEDE5;
+    placeholder-text-color: #A3B0BD;
+}
+
+QLineEdit#elementSearch:focus {
+    border-color: #0F9D8A;
+    background: #FFFFFF;
+}
+
+QLabel#periodicCount {
+    padding: 5px 11px;
+    border: 1px solid #D6F1EA;
+    border-radius: 12px;
+    background: #EFFAF7;
+    color: #0F8A78;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+QLabel#periodicTitle {
+    color: #0B1F33;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+QLabel#periodicSubtitle {
+    color: #66788A;
+    font-size: 12px;
+}
+
+QLabel#periodicTag {
+    padding: 6px 12px;
+    border: 1px solid #E2E9F0;
+    border-radius: 13px;
+    background: #FFFFFF;
+    color: #607284;
+    font-size: 10px;
+}
+
+QLabel#tableTitle {
+    color: #12263A;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+QLabel#tableHint {
+    color: #0F8A78;
+    font-size: 9px;
+}
+
+QLabel#tableMeta {
+    color: #9AA8B6;
+    font-size: 8px;
+}
+
+QLabel#legendText {
+    color: #718394;
+    font-size: 8px;
+}
+
+QLabel#groupHeader {
+    color: #9AA8B6;
+    font-size: 8px;
+}
+
+QLabel#periodLabel {
+    padding-right: 4px;
+    color: #9AA8B6;
+    font-size: 8px;
+}
+
+QLabel#fBlockLabel {
+    padding-right: 4px;
+    color: #9AA8B6;
+    font-size: 7px;
+}
+
+QLabel#fPlaceholder {
+    border: 1px dashed #D5E0E9;
+    border-radius: 8px;
+    background: #F8FAFC;
+    color: #9AAAB8;
+    font-size: 8px;
+}
+
+QFrame#elementTile {
+    border: 1px solid #DCE5EC;
+    border-radius: 8px;
+    background: #F3F5F7;
+}
+
+QFrame#elementTile:hover {
+    border: 1px solid #0F9D8A;
+}
+
+QFrame#elementTile[category="alkali"] { background: #FFF4E5; border-color: #F0D3A2; }
+QFrame#elementTile[category="alkaline"] { background: #FFF8DA; border-color: #E8D693; }
+QFrame#elementTile[category="transition"] { background: #EAF2FF; border-color: #C7D9F3; }
+QFrame#elementTile[category="post"] { background: #EDF4FA; border-color: #C9DCEA; }
+QFrame#elementTile[category="metalloid"] { background: #E8F8F2; border-color: #B8E2D1; }
+QFrame#elementTile[category="nonmetal"] { background: #EAF8E9; border-color: #BDE5C0; }
+QFrame#elementTile[category="halogen"] { background: #E8F7FB; border-color: #B7E0ED; }
+QFrame#elementTile[category="noble"] { background: #F3ECFF; border-color: #D8C7F2; }
+QFrame#elementTile[category="lanthanide"] { background: #FCEFF3; border-color: #EFC6D1; }
+QFrame#elementTile[category="actinide"] { background: #F8EEFF; border-color: #E0C6F0; }
+QFrame#elementTile[category="unknown"] { background: #F3F5F7; border-color: #DCE2E8; }
+
+QFrame#elementTile[selected="true"] {
+    border: 2px solid #0F9D8A;
+    background: #FFFFFF;
+}
+
+QFrame#elementTile[match="false"] {
+    border-color: #EDF1F5;
+    background: #F7F9FB;
+}
+
+QFrame#elementTile[match="false"] QLabel#elementNumber,
+QFrame#elementTile[match="false"] QLabel#elementSymbol,
+QFrame#elementTile[match="false"] QLabel#elementName {
+    color: #C1CBD4;
+}
+
+QLabel#elementNumber {
+    color: #7B8D9D;
+    font-size: 7px;
+    font-weight: 500;
+}
+
+QLabel#elementSymbol {
+    color: #17344D;
+    font-family: "Cambria Math", "Microsoft YaHei UI";
+    font-size: 16px;
+    font-weight: 700;
+}
+
+QLabel#elementName {
+    color: #5E7183;
+    font-size: 7px;
+}
+
+QLabel#tableNote {
+    color: #98A6B4;
+    font-size: 8px;
+}
+
+QLabel#detailTitle {
+    color: #12263A;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+QLabel#detailSymbol {
+    color: #0F766E;
+    font-family: "Cambria Math", "Microsoft YaHei UI";
+    font-size: 58px;
+    font-weight: 700;
+}
+
+QLabel#detailNumber {
+    padding-top: 6px;
+    color: #B0BEC9;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+QLabel#detailName {
+    color: #17344D;
+    font-size: 23px;
+    font-weight: 700;
+}
+
+QLabel#detailNameEn {
+    color: #93A1AF;
+    font-size: 10px;
+}
+
+QFrame#detailDivider {
+    border: none;
+    background: #EDF2F6;
+}
+
+QLabel#detailKey {
+    color: #93A1AF;
+    font-size: 10px;
+}
+
+QLabel#detailValue {
+    color: #33495E;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel#detailDescription {
+    color: #607284;
+    font-size: 10px;
+}
+
+QLabel#detailHint {
+    padding-top: 12px;
+    border-top: 1px solid #EDF2F6;
+    color: #9AA8B6;
+    font-size: 8px;
+}
+
+QLabel#periodicFooter {
+    color: #9AA8B6;
+    font-size: 8px;
+}
