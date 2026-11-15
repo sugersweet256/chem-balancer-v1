@@ -84,7 +84,7 @@ def valence_balance(reactants:list, products:list, parse_list:list):
     """多解时用化合价升降守恒补一条电子守恒约束，能解出唯一正系数就返回"""
     left_os = [oxidation_num(s) for s in reactants]
     right_os = [oxidation_num(s) for s in products]
-    if None in left_os or None in right_os:     # 有物质化合价算不准，就不硬算
+    if None in left_os or None in right_os:     # 物质化合价算不准
         return None
 
     # 生成物里的原子，当作从左边“化合价最接近”的那个物质来的
@@ -132,10 +132,10 @@ def balancer(reactants:list, products:list, substance_list):
     result = a.nullspace() #高斯消元求解零空间
 
     balance_result = []
-    # 零空间为空说明方程式本身不守恒，直接报错
+    # 零空间为空方程式本身不守恒，报错
     if len(result) == 0:
         raise ValueError('该方程式无解，请检查方程式是否写错')
-    # 解唯一，直接化简返回
+    # 解唯一，化简返回
     elif len(result) == 1:
         vec = result[0]
         int_vec = simplify(vec)
@@ -153,7 +153,7 @@ def balancer(reactants:list, products:list, substance_list):
 
 def simplify(result: Matrix):
     denoms = []
-    # 传入的已经是一个列向量，直接取它的每个元素
+    # 传入的是一个列向量，取它的每个元素
     vec = result
     # 把分数化成整数
     for v in vec:
