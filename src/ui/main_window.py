@@ -39,6 +39,8 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
+    QSpacerItem,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -164,6 +166,8 @@ class MainWindow(QMainWindow):
         if page is not None and page.layout() is not None:
             page.layout().setSizeConstraint(QLayout.SetMinimumSize)
 
+        self._build_enthalpy_card()
+
         table = self.conservation_table
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
@@ -285,6 +289,7 @@ class MainWindow(QMainWindow):
         self.conservation_hint.setText("等待配平")
         self.steps_browser.setHtml(render.steps_placeholder_html())
         self._clear_chips()
+        self._reset_enthalpy("配平后显示反应物 → 过渡态 → 生成物的能量变化图")
         self._schedule_page_sync()
 
     def _use_example(self, index: int) -> None:
@@ -330,6 +335,7 @@ class MainWindow(QMainWindow):
         self.conservation_hint.setText("两侧原子数一致")
         self.steps_browser.setHtml(render.steps_placeholder_html())
         self._clear_chips()
+        self._reset_enthalpy("配平后显示反应物 → 过渡态 → 生成物的能量变化图")
         self._schedule_page_sync()
 
     def _show_result(self, result: BalanceResult) -> None:
@@ -346,6 +352,7 @@ class MainWindow(QMainWindow):
         self._populate_table(result)
         self.steps_browser.setHtml(render.steps_html(result))
         self.steps_browser.verticalScrollBar().setValue(0)
+        self._update_enthalpy(result)
         self._schedule_page_sync()
 
     def _show_error(self, message: str) -> None:
@@ -363,7 +370,148 @@ class MainWindow(QMainWindow):
         self.conservation_hint.setText("等待有效方程式")
         self.steps_browser.setHtml(render.steps_error_html(message))
         self._clear_chips()
+        self._reset_enthalpy("当前方程式无法计算焓变")
         self._schedule_page_sync()
+
+    # ------------------------------------------------------------- enthalpy
+    def _build_enthalpy_card(self) -> None:
+        card = QFrame()
+        card.setObjectName("enthalpyCard")
+        card.setProperty("card", True)
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(24, 18, 24, 18)
+        card_layout.setSpacing(8)
+
+        header = QHBoxLayout()
+        title = QLabel("反应焓变")
+        title.setObjectName("enthalpyTitle")
+        header.addWidget(title)
+        hint = QLabel("根据标准生成焓计算 · 单位 kJ/mol")
+        hint.setObjectName("enthalpyHint")
+        header.addWidget(hint)
+        header.addStretch(1)
+        self.enthalpy_value = QLabel("")
+        self.enthalpy_value.setObjectName("enthalpyValue")
+        self.enthalpy_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        header.addWidget(self.enthalpy_value)
+        card_layout.addLayout(header)
+
+        self.enthalpy_stack = QStackedWidget()
+        self.enthalpy_stack.setObjectName("enthalpyStack")
+        self.enthalpy_stack.setFixedHeight(288)
+
+        empty = QWidget()
+        empty.setObjectName("enthalpyEmpty")
+        empty_layout = QVBoxLayout(empty)
+        empty_layout.setContentsMargins(0, 0, 0, 0)
+        empty_layout.addStretch(1)
+        self.enthalpy_empty_label = QLabel("")
+        self.enthalpy_empty_label.setObjectName("enthalpyPlaceholder")
+        self.enthalpy_empty_label.setAlignment(Qt.AlignCenter)
+        self.enthalpy_empty_label.setWordWrap(True)
+        empty_layout.addWidget(self.enthalpy_empty_label)
+        empty_layout.addStretch(1)
+        self.enthalpy_stack.addWidget(empty)
+
+        self.enthalpy_chart_host = QWidget()
+        self.enthalpy_chart_host.setObjectName("enthalpyChartHost")
+        self.enthalpy_chart_layout = QVBoxLayout(self.enthalpy_chart_host)
+        self.enthalpy_chart_layout.setContentsMargins(0, 0, 0, 0)
+        self.enthalpy_chart_layout.setSpacing(0)
+        self.enthalpy_stack.addWidget(self.enthalpy_chart_host)
+        self.enthalpy_stack.setCurrentIndex(0)
+        card_layout.addWidget(self.enthalpy_stack)
+        self._add_shadow(card, 18)
+
+        page_layout = self.page.layout()
+        body_index = page_layout.indexOf(self.body)
+        if body_index >= 0:
+            page_layout.insertItem(
+                body_index + 1,
+                QSpacerItem(20, 18, QSizePolicy.Fixed, QSizePolicy.Fixed),
+            )
+            page_layout.insertWidget(body_index + 2, card)
+        self.enthalpy_card = card
+
+    def _clear_enthalpy_chart(self) -> None:
+        while self.enthalpy_chart_layout.count():
+            item = self.enthalpy_chart_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+    def _reset_enthalpy(self, message: str) -> None:
+        if not hasattr(self, "enthalpy_stack"):
+            return
+        self._clear_enthalpy_chart()
+        self.enthalpy_empty_label.setText(message)
+        self.enthalpy_stack.setCurrentIndex(0)
+        self.enthalpy_value.setText("")
+
+    def _update_enthalpy(self, result: BalanceResult) -> None:
+        try:
+            delta_h = self._calculate_delta_h(result)
+        except Exception as error:
+            self._reset_enthalpy(f"暂时无法生成焓变图：{error}")
+            return
+
+        equation = result.plain_equation.replace(" → ", "->")
+        self._clear_enthalpy_chart()
+
+        # 优先使用核心自带的 matplotlib 图；没有安装 matplotlib 时，
+        # 用 Qt 原生绘图后备，保证这个功能不会因为缺依赖而失效。
+        widget = None
+        try:
+            from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+
+            from ..energe_change_pic import energy_change_figure
+
+            figure = energy_change_figure(equation, figsize=(10.5, 3.0))
+            canvas = FigureCanvasQTAgg(figure)
+            canvas.setMinimumHeight(260)
+            canvas.setStyleSheet("background: transparent;")
+            widget = canvas
+        except Exception:
+            from .enthalpy_chart import EnthalpyChart
+
+            widget = EnthalpyChart(delta_h, result.plain_equation)
+            widget.setMinimumHeight(260)
+
+        self.enthalpy_chart_layout.addWidget(widget)
+        self.enthalpy_value.setText(f"ΔH = {delta_h:+.1f} kJ/mol")
+        self.enthalpy_stack.setCurrentIndex(1)
+        if hasattr(widget, "draw_idle"):
+            widget.draw_idle()
+        self._schedule_page_sync()
+
+    @staticmethod
+    def _energy_key(species) -> str:
+        formula = species.formula
+        if species.charge:
+            magnitude = abs(species.charge)
+            formula += "^" + ("" if magnitude == 1 else str(magnitude))
+            formula += "+" if species.charge > 0 else "-"
+        return formula
+
+    def _calculate_delta_h(self, result: BalanceResult) -> float:
+        from ..substances_energy import SUBSTANCES_ENERGY
+
+        delta = 0.0
+        for item, coefficient in zip(
+            result.equation.products, result.coefficients[result.reactant_count :]
+        ):
+            key = self._energy_key(item)
+            if key not in SUBSTANCES_ENERGY:
+                raise ValueError(f"标准生成焓表里没有「{key}」，算不出 ΔH")
+            delta += coefficient * SUBSTANCES_ENERGY[key]
+        for item, coefficient in zip(
+            result.equation.reactants, result.coefficients[: result.reactant_count]
+        ):
+            key = self._energy_key(item)
+            if key not in SUBSTANCES_ENERGY:
+                raise ValueError(f"标准生成焓表里没有「{key}」，算不出 ΔH")
+            delta -= coefficient * SUBSTANCES_ENERGY[key]
+        return delta
 
     # ------------------------------------------------------------ result UI
     def _clear_chips(self) -> None:

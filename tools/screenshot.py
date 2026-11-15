@@ -41,7 +41,8 @@ def load_fonts() -> None:
 
 def main() -> int:
     periodic = "--periodic" in sys.argv
-    args = [arg for arg in sys.argv[1:] if arg != "--periodic"]
+    balance = "--balance" in sys.argv
+    args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
     output = Path(args[0]) if args else Path("preview.png")
     width = int(args[1]) if len(args) > 1 else 1480
     height = int(args[2]) if len(args) > 2 else (900 if periodic else 1000)
@@ -51,7 +52,9 @@ def main() -> int:
     window = PeriodicTableWindow() if periodic else MainWindow()
     window.resize(width, height)
     window.show()
-    for _ in range(4):
+    if balance and hasattr(window, "balance_button"):
+        window.balance_button.click()
+    for _ in range(6):
         app.processEvents()
 
     pixmap = window.grab()

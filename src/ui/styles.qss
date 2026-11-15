@@ -464,6 +464,35 @@ QTextBrowser#stepsBrowser {
     selection-background-color: #D9F4EE;
 }
 
+QLabel#enthalpyTitle {
+    color: #12263A;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+QLabel#enthalpyHint {
+    color: #93A1AF;
+    font-size: 9px;
+}
+
+QLabel#enthalpyValue {
+    color: #0F8A78;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+QStackedWidget#enthalpyStack,
+QWidget#enthalpyEmpty,
+QWidget#enthalpyChartHost {
+    background: transparent;
+    border: none;
+}
+
+QLabel#enthalpyPlaceholder {
+    color: #98A6B4;
+    font-size: 10px;
+}
+
 QLabel#footerBrand,
 QLabel#footerNote {
     color: #9AA8B6;

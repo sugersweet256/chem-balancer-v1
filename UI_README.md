@@ -34,12 +34,14 @@ Windows 可以双击 `run.bat`。
 
 主界面已去掉右侧“相关工具”栏，保留输入、示例、配平结果、原子守恒和求解过程。输入过程中只显示“待配平”，需要点击右上角“配平”按钮或按 Enter 后才开始计算，不会边输入边配平。
 
+配平成功后在页面最下方显示“反应焓变”卡片，使用核心的 `energe_change_pic.py` 和 `substances_energy.py` 计算 ΔH 并绘制反应物 → 过渡态 → 生成物的能量变化图。
+
 ### 元素周期表
 
 - 入口：顶部导航“元素周期表”
 - 118 种元素，按标准长式排列
 - 支持按中文名、英文名、元素符号、原子序数搜索
-- 点击元素显示原子量、周期、族、分区、质子数、电子数和类别说明
+- 点击元素仅做高亮定位，不再显示右侧元素详情面板
 - 数据在 `src/ui/periodic_data.py`，不依赖核心代码
 
 ## 预览
@@ -115,16 +117,18 @@ balance_detailed(equation) -> {
 }
 ```
 
-### 4. 能量变化模块尚未接入主 UI
+### 4. 焓变图的物质数据覆盖范围
 
-核心新增了：
+能量图已经接入主界面，调用的是核心现有的：
 
 - `src/energe_change_pic.py`
 - `src/substances_energy.py`
 
-它们可以计算反应热并绘制能量变化图。但上一版 UI 并没有这块内容，所以本次只恢复配平器和元素周期表，没有把能量图放进主界面。
+如果环境里安装了 matplotlib，就使用核心的 matplotlib 图像；没有安装时，`src/ui/enthalpy_chart.py` 会用 Qt 原生绘图补上，不会因为缺少 matplotlib 而让整个焓变卡片失效。
 
-这部分**可以实现**，不算核心缺陷；如果希望增加“反应热 / 能量变化图”卡片，可以直接用现有的 `energy_change_canvas()`。
+如果方程式里的某种物质不在 `substances_energy.py` 的 `SUBSTANCES_ENERGY` 表中，核心会报“标准生成焓表里没有……”，UI 会在焓变卡片里显示这个错误。
+
+这不是 UI 能补齐的：需要往 `substances_energy.py` 增加对应物质的标准生成焓数据。UI 不会修改或伪造这部分数据。
 
 ### 5. 电子/半反应
 
@@ -143,6 +147,7 @@ src/ui/main_window.ui
 src/ui/main_window.py
 src/ui/legacy_adapter.py
 src/ui/render.py
+src/ui/enthalpy_chart.py
 src/ui/styles.qss
 src/ui/periodic_data.py
 src/ui/periodic_window.py
